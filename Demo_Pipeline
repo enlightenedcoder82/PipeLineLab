@@ -1,0 +1,333 @@
+terraform {
+  required_providers {
+    aws= {
+        source = "hashicorp/aws"
+        version = "~> 3.0"
+    }
+  }
+}
+
+provider "aws" {
+   region = "us-east-1"
+}
+
+# Create the iam group  membership resource
+
+# iam group membership example
+#   from terraform registry: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_membership
+
+
+# enrolling users into the iam group as members of the team
+# teams 1 thru 4
+resource "aws_iam_group_membership" "team1" {
+  name = "FFP-group-membership"
+
+  users = [
+    aws_iam_user.user_one.name,
+    aws_iam_user.user_two.name
+  ]
+
+  group = aws_iam_group.group1.name
+}
+
+resource "aws_iam_group_membership" "team2" {
+  name = "TBN-group-membership"
+
+  users = [
+    aws_iam_user.user_three.name
+  ]
+
+  group = aws_iam_group.group2.name
+}
+
+resource "aws_iam_group_membership" "team3" {
+  name = "CCB-group-membership"
+
+  users = [
+    aws_iam_user.user_four.name
+  ]
+
+  group = aws_iam_group.group3.name
+}
+
+resource "aws_iam_group_membership" "team4" {
+  name = "LOTNS-group-membership"
+
+  users = [
+    aws_iam_user.user_five.name,
+    aws_iam_user.user_six.name
+  ]
+
+  group = aws_iam_group.group4.name
+}
+
+# Create the names of the iam groups
+# iam group resources 1 thru 4
+resource "aws_iam_group" "group1" {
+  name = "Funky_Finger_Productions"
+}
+
+resource "aws_iam_group" "group2" {
+  name = "The_Blue_Notes"
+}
+
+resource "aws_iam_group" "group3" {
+  name = "Cold_Crush_Brothers"
+}
+
+resource "aws_iam_group" "group4" {
+  name = "Leaders_Of_The_New_School"
+}
+
+# Creating the names of the iam users
+# iam user resources 1 thru 4
+resource "aws_iam_user" "user_one" {
+  name = "Clavelle"
+}
+
+resource "aws_iam_user" "user_two" {
+  name = "Howard_Thibbs_III"
+}
+
+resource "aws_iam_user" "user_three" {
+  name = "Theodore_Pendergrass"
+}
+
+resource "aws_iam_user" "user_four" {
+  name = "Grandmaster_Caz"
+}
+
+resource "aws_iam_user" "user_five" {
+  name = "Charlie_Brown"
+}
+
+resource "aws_iam_user" "user_six" {
+  name = "Busta_Rhymes"
+}
+
+# iam group policy example
+#   from terraform registry: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_group_policy
+
+# json example policy
+#   from aws: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ExamplePolicies_EC2.html#iam-example-region
+
+
+# iam group 1 permissions
+# has admin privileges
+resource "aws_iam_group_policy" "group1_permissions" {
+  name = "admin-permissions"
+  group = aws_iam_group.group1.name
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "*"
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+# iam group 2 policy permissions
+# allows ec2 actions
+# to start, run, stop, and terminate an instance
+resource "aws_iam_group_policy" "group2_permissions" {
+  name = "ec2-instance-permissions"
+  group = aws_iam_group.group2.name
+
+  policy = jsonencode({
+   "Version": "2012-10-17",
+   "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances", 
+        "ec2:TerminateInstances",
+        "ec2:StopInstances", 
+        "ec2:StartInstances"
+      ],
+      "Resource": "*"
+    }
+   ]
+})
+}
+
+# iam group 3 policy permissions
+# allows access to modify attributes
+# of an ec2 instance snapshot
+resource "aws_iam_group_policy" "group3_permissions" {
+  name = "ec2-modify-snapshot"
+  group = aws_iam_group.group3.name
+
+  policy = jsonencode({
+   "Version":"2012-10-17",
+   "Statement": [
+           {
+         "Effect":"Allow",
+         "Action":"ec2:ModifySnapshotAttribute",
+         "Resource":"arn:aws:ec2:us-east-1::snapshot/*",
+         "Condition":{
+            "StringEquals":{
+               "aws:ResourceTag/user-name":"$${aws:username}"
+            }
+         }
+      }
+   ]
+})
+}
+
+# iam group 4 policy permissions
+# blocks ec2 access in the eu-central-l (Frankfurt) region
+resource "aws_iam_group_policy" "group4_permissions" {
+  name = "block-ec2-access-in-eu-central-1"
+  group = aws_iam_group.group4.name
+
+
+  policy = jsonencode({
+  "Version":"2012-10-17",
+  "Statement": [
+       {
+      "Effect": "Deny",
+      "Action": "ec2:*",
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "ec2:Region": "eu-central-1"
+        }
+      }
+    }  
+  ]
+})
+}
+
+# Setting up Access key creation for 
+# each iam user
+resource "aws_iam_access_key" "user_one_key" {
+  user = aws_iam_user.user_one.name
+}
+
+resource "aws_iam_access_key" "user_two_key" {
+  user = aws_iam_user.user_two.name
+}
+
+resource "aws_iam_access_key" "user_three_key" {
+  user = aws_iam_user.user_three.name
+}
+
+resource "aws_iam_access_key" "user_four_key" {
+  user = aws_iam_user.user_four.name
+}
+
+resource "aws_iam_access_key" "user_five_key" {
+  user = aws_iam_user.user_five.name
+}
+
+resource "aws_iam_access_key" "user_six_key" {
+  user = aws_iam_user.user_six.name
+}
+
+# Creating csv files to store access and secret credentials
+# from the terrafrom state file
+
+# Source: https://achinthabandaranaike.medium.com/how-to-deploy-aws-iam-users-user-groups-policies-and-roles-using-terraform-7dd853404dc0
+
+
+# For each iam user, pulled from access key id and secret
+# files to be exported to AWS IAM
+locals {
+  user_one_keys_csv = "access_key,secret_key\n${aws_iam_access_key.user_one_key.id},${aws_iam_access_key.user_one_key.secret}"
+  user_two_keys_csv = "access_key,secret_key\n${aws_iam_access_key.user_two_key.id},${aws_iam_access_key.user_two_key.secret}"
+  user_three_keys_csv = "access_key,secret_key\n${aws_iam_access_key.user_three_key.id},${aws_iam_access_key.user_three_key.secret}"
+  user_four_keys_csv = "access_key,secret_key\n${aws_iam_access_key.user_four_key.id},${aws_iam_access_key.user_four_key.secret}"
+  user_five_keys_csv = "access_key,secret_key\n${aws_iam_access_key.user_five_key.id},${aws_iam_access_key.user_five_key.secret}"
+  user_six_keys_csv = "access_key,secret_key\n${aws_iam_access_key.user_six_key.id},${aws_iam_access_key.user_six_key.secret}"
+}
+
+# Create local csv files to store keys of each iam user
+# files are saved in your root terraform folder
+
+resource "local_file" "user_one_keys" {
+  content  = local.user_one_keys_csv
+  filename = "user_one-keys.csv"
+}
+
+resource "local_file" "user_two_keys" {
+  content  = local.user_two_keys_csv
+  filename = "user_two-keys.csv"
+}
+
+resource "local_file" "user_three_keys" {
+  content  = local.user_three_keys_csv
+  filename = "user_three-keys.csv"
+}
+
+resource "local_file" "user_four_keys" {
+  content  = local.user_four_keys_csv
+  filename = "user_four-keys.csv"
+}
+
+resource "local_file" "user_five_keys" {
+  content  = local.user_five_keys_csv
+  filename = "user_five-keys.csv"
+}
+
+resource "local_file" "user_six_keys" {
+  content  = local.user_six_keys_csv
+  filename = "user_six-keys.csv"
+}
+# General syntax for creating an Output
+#   outputs similar to using print() function in Python
+
+#   output "whatever_you_like" {
+#    value = <Resource_name>.<Reference_name>.<whatever>
+#    where .<whatever> = .id / .name / .arn / .json / etc.
+#   }
+
+
+#Show output for the iam group arn
+output "aws_iam_group_one_arn"{
+    value = aws_iam_group.group1.arn
+}
+
+output "aws_iam_group_two_arn"{
+    value = aws_iam_group.group2.arn
+}
+
+output "aws_iam_group_three_arn"{
+    value = aws_iam_group.group3.arn
+}
+
+output "aws_iam_group_four_arn"{
+    value = aws_iam_group.group4.arn
+}
+
+#   display output value for the iam users
+#   output by iam user arn 
+
+output "aws_iam_user_one_arn"{
+    value = aws_iam_user.user_one.arn
+}
+
+output "aws_iam_user_two_arn"{
+    value = aws_iam_user.user_two.arn
+}
+
+
+output "aws_iam_user_three_arn"{
+    value = aws_iam_user.user_three.arn
+}
+
+output "aws_iam_user_four_arn"{
+    value = aws_iam_user.user_four.arn
+}
+
+output "aws_iam_user_five_arn"{
+    value = aws_iam_user.user_five.arn
+}
+
+output "aws_iam_user_six_arn"{
+    value = aws_iam_user.user_six.arn
+}
